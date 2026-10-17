@@ -1,0 +1,33 @@
+rules_version = '2';
+service cloud.firestore {
+ match /databases/{database}/documents {
+  function signedIn() { return request.auth != null; }
+  function validRoom(room) { return room.matches('^[a-f0-9]{48}$'); }
+  match /lists/{room} {
+   allow get: if signedIn() && validRoom(room);
+   allow list, update, delete: if false;
+   allow create: if signedIn() && validRoom(room)
+    && request.resource.data.keys().hasOnly(['createdAt','createdBy'])
+    && request.resource.data.createdBy == request.auth.uid
+    && request.resource.data.createdAt == request.time;
+   match /items/{item} {
+    function allowed() { return signedIn() && validRoom(room) && exists(/databases/$(database)/documents/lists/$(room)); }
+    function valid() {
+     let d = request.resource.data;
+     return d.keys().hasAll(['name','quantity','category','assignee','note','done','createdAt','updatedAt','updatedBy'])
+      && d.keys().hasOnly(['name','quantity','category','assignee','note','done','createdAt','updatedAt','updatedBy'])
+      && d.name is string && d.name.size() > 0 && d.name.size() <= 100
+      && d.quantity is string && d.quantity.size() <= 40
+      && d.category in ['食材','飲み物','道具','その他']
+      && d.assignee is string && d.assignee.size() <= 40
+      && d.note is string && d.note.size() <= 300
+      && d.updatedBy is string && d.updatedBy.size() <= 40
+      && d.done is bool && d.createdAt is timestamp && d.updatedAt == request.time;
+    }
+    allow read, delete: if allowed();
+    allow create: if allowed() && valid() && request.resource.data.createdAt == request.time;
+    allow update: if allowed() && valid() && request.resource.data.createdAt == resource.data.createdAt;
+   }
+  }
+ }
+}
