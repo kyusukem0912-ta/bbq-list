@@ -4,7 +4,19 @@ let items=[], room='', db, api, auth, editing=null, stop;
 const form=$('itemForm');
 const notice=message=>{$('notice').textContent=message;};
 function failure(error){console.error(error.code||'operation-failed');notice('保存・接続に失敗しました。通信と設定を確認して再試行してください。'+(error.code ? ` (${error.code})`:''));}
+function renderLocations(){
+ const picker=$('locationPicker');if(!picker)return;
+ const locations=[...new Set(items.map(item=>(item.location||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ja'));
+ picker.replaceChildren();
+ const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent=locations.length?'入力済みの場所を選択':'まだ候補はありません';picker.append(placeholder);
+ for(const location of locations){const option=document.createElement('option');option.value=location;option.textContent=location;picker.append(option);}
+ picker.disabled=!locations.length;picker.value=locations.includes(form.elements.location.value)?form.elements.location.value:'';
+}
+const locationPicker=$('locationPicker');
+if(locationPicker)locationPicker.onchange=()=>{if(locationPicker.value)form.elements.location.value=locationPicker.value;};
+form.elements.location.addEventListener('input',()=>{if(locationPicker)locationPicker.value=form.elements.location.value;});
 function render(){
+ renderLocations();
  const done=items.filter(i=>i.done).length;$('count').textContent=`${done} / ${items.length}`;$('progress').max=items.length||1;$('progress').value=done;
  const shown=items.filter(i=>$('filter').value==='all'||i.done===($('filter').value==='done'));
  $('items').replaceChildren();
@@ -18,7 +30,7 @@ function render(){
 }
 const ref=id=>api.doc(db,'lists',room,'items',id);
 function reset(){editing=null;form.reset();$('formTitle').textContent='買うものを追加';form.querySelector('[type=submit]').textContent='追加する';$('cancel').hidden=true;}
-function edit(item){editing=item.id;for(const key of ['name','quantity','category','location','note'])form.elements[key].value=item[key]||'';$('formTitle').textContent='品目を編集';form.querySelector('[type=submit]').textContent='変更を保存';$('cancel').hidden=false;form.elements.name.focus();}
+function edit(item){editing=item.id;for(const key of ['name','quantity','category','location','note'])form.elements[key].value=item[key]||'';$('formTitle').textContent='品目を編集';form.querySelector('[type=submit]').textContent='変更を保存';$('cancel').hidden=false;renderLocations();form.elements.name.focus();}
 $('cancel').onclick=reset;$('filter').onchange=render;
 form.onsubmit=async e=>{e.preventDefault();const button=form.querySelector('[type=submit]');button.disabled=true;const data={};for(const key of ['name','quantity','category','location','note'])data[key]=form.elements[key].value.trim();if(!data.name){notice('品名を入力してください。');button.disabled=false;return;}try{const common={...data,assignee:'',updatedBy:'',updatedAt:api.serverTimestamp()};if(editing)await api.updateDoc(ref(editing),common);else await api.addDoc(api.collection(db,'lists',room,'items'),{...common,done:false,createdAt:api.serverTimestamp()});reset();notice('');}catch(e){failure(e);}finally{button.disabled=false;}};
 $('share').onclick=async()=>{try{await navigator.clipboard.writeText(location.href);notice('共有URLをコピーしました。参加者に送ってください。');}catch{notice('アドレスバーのURLをコピーして参加者に送ってください。');}};
