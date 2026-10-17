@@ -1,0 +1,1 @@
+{"name":"bbq-together","private":true,"type":"module","scripts":{"check":"node --check public/app.js && node --check public/firebase-config.js"}}
