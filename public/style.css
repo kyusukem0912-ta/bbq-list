@@ -3,3 +3,20 @@
 .venue{background:#eef2e6;border-color:#ced9c3}.venue-badge{display:inline-block;padding:5px 10px;border-radius:20px;background:#dce7d0;font-size:12px;font-weight:700;margin-bottom:12px}.venue h2{margin-bottom:8px}.venue-intro{font-size:14px;margin:0 0 16px;color:#52644b}.venue summary{cursor:pointer;font-size:14px;font-weight:600;padding:10px 0;min-height:44px}.venue summary:focus-visible{outline:3px solid #ce7b49;outline-offset:3px}.venue-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 28px}.venue h3{font-size:14px;margin:14px 0 8px}.venue ul{padding-left:20px;margin:0;font-size:14px;line-height:1.9}.venue li{overflow-wrap:anywhere}@media(max-width:540px){.venue-grid{grid-template-columns:1fr}}
 
 .listhead{align-items:center;margin-bottom:16px}.listhead h2{margin:0}.list-filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.list-filters select{min-width:0}.filter-count{font-size:13px;color:#586454;margin:14px 0}@media(max-width:540px){.list-filters{grid-template-columns:1fr 1fr}.list-filters label:last-child{grid-column:1/-1}}
+
+.view-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:#e9ecdf;padding:5px;border-radius:14px}
+.view-tabs button{background:transparent;color:#586454;font-weight:700}
+.view-tabs button[aria-selected=true]{background:#244b3d;color:white;box-shadow:0 2px 5px #243e321a}
+.compact-item{padding:10px 12px;margin:0;border-radius:0;border-bottom:0;gap:12px;flex-wrap:nowrap;min-height:66px}
+.compact-item:first-child{border-radius:12px 12px 0 0}
+.compact-item:last-child{border-bottom:1px solid #e0e4d8;border-radius:0 0 12px 12px}
+.compact-item:only-child{border-radius:12px}
+.compact-item input{flex:0 0 24px;cursor:pointer}
+.compact-item strong{font-size:15px}
+.compact-item .detail p{margin-top:3px;line-height:1.5}
+.item-note summary{font-size:12px;color:#586454;cursor:pointer;min-height:28px;padding:5px 0}
+.item-note summary:focus-visible{outline:3px solid #ce7b49}
+.progress.panel{padding:14px 20px;margin:14px 0}
+.progress strong{font-size:24px}
+#editPanel .item .controls{margin-left:0}
+@media(max-width:540px){main{padding:22px 14px}.compact-item{flex-wrap:nowrap}.listhead button{font-size:12px;padding:10px}.list-filters{gap:8px}.list-filters select{padding:10px 7px}}
