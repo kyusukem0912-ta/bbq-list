@@ -41,24 +41,46 @@ function matchesFilters(item,status,category,location){
   && (location==='all'||(location==='unset'?!place:place===location.slice(6)));
 }
 
+function selectTab(mode){
+ for(const name of ['check','edit']){
+  const tab=$(name+'Tab'),panel=$(name+'Panel');
+  if(!tab||!panel)continue;
+  tab.setAttribute('aria-selected',String(name===mode));tab.tabIndex=name===mode?0:-1;panel.hidden=name!==mode;
+ }
+}
+for(const mode of ['check','edit']){
+ const tab=$(mode+'Tab');if(!tab)continue;
+ tab.onclick=()=>selectTab(mode);
+ tab.onkeydown=e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const next=e.key==='Home'?'check':e.key==='End'?'edit':mode==='check'?'edit':'check';selectTab(next);$(next+'Tab').focus();};
+}
 function render(){
  renderLocationFilter();
  renderLocations();
  const done=items.filter(i=>i.done).length;$('count').textContent=`${done} / ${items.length}`;$('progress').max=items.length||1;$('progress').value=done;
  const shown=items.filter(item=>matchesFilters(item,$('filter').value,$('categoryFilter')?.value||'all',$('locationFilter')?.value||'all'));
  if($('filterCount'))$('filterCount').textContent=`${items.length}件中 ${shown.length}件を表示`;
- $('items').replaceChildren();
- if(!shown.length){const p=document.createElement('p');p.className='empty';p.textContent=items.length?'該当する品目はありません。':'まだ空っぽです。最初の品目を追加しましょう。';$('items').append(p);}
- shown.sort((a,b)=>Number(a.done)-Number(b.done)||a.name.localeCompare(b.name,'ja')).forEach(item=>{
- const row=document.createElement('article');row.className='item'+(item.done?' done':'');
+ renderRows($('items'),$('checkItems')?items:shown,false);
+ if($('checkItems'))renderRows($('checkItems'),shown,true);
+}
+function renderRows(container,shown,compact){
+ const expanded=new Set([...container.querySelectorAll('details[open]')].map(el=>el.dataset.item));
+ container.replaceChildren();
+ if(!shown.length){const p=document.createElement('p');p.className='empty';p.textContent=items.length?'該当する品目はありません。':'まだ空っぽです。最初の品目を追加しましょう。';container.append(p);}
+ [...shown].sort((a,b)=>Number(a.done)-Number(b.done)||a.name.localeCompare(b.name,'ja')).forEach(item=>{
+ const row=document.createElement('article');row.className='item'+(compact?' compact-item':'')+(item.done?' done':'');
  const check=document.createElement('input');check.type='checkbox';check.checked=item.done;check.setAttribute('aria-label',`${item.name}を購入済みにする`);check.onchange=async()=>{check.disabled=true;try{await api.updateDoc(ref(item.id),{done:check.checked,updatedBy:'',updatedAt:api.serverTimestamp()});}catch(e){check.checked=item.done;failure(e);}finally{check.disabled=false;}};
  const detail=document.createElement('div');detail.className='detail';const title=document.createElement('strong');title.textContent=item.name;const meta=document.createElement('p');meta.textContent=[categoryForItem(item),item.quantity,item.location?`買い出し場所：${item.location}`:'場所未定',item.note].filter(Boolean).join(' · ');detail.append(title,meta);
- const controls=document.createElement('div');controls.className='controls';for(const [label,action] of [['編集',()=>edit(item)],['削除',async()=>{if(!confirm(`「${item.name}」を削除しますか？`))return;try{await api.deleteDoc(ref(item.id));if(editing===item.id)reset();}catch(e){failure(e);}}]]){const b=document.createElement('button');b.textContent=label;b.setAttribute('aria-label',`${item.name}を${label}`);b.onclick=action;controls.append(b);}row.append(check,detail,controls);$('items').append(row);
+ const controls=document.createElement('div');controls.className='controls';for(const [label,action] of [['編集',()=>edit(item)],['削除',async()=>{if(!confirm(`「${item.name}」を削除しますか？`))return;try{await api.deleteDoc(ref(item.id));if(editing===item.id)reset();}catch(e){failure(e);}}]]){const b=document.createElement('button');b.textContent=label;b.setAttribute('aria-label',`${item.name}を${label}`);b.onclick=action;controls.append(b);}if(compact){
+ meta.textContent=[item.quantity,item.location||'場所未定'].filter(Boolean).join(' · ');
+ if(item.note){const notes=document.createElement('details');notes.className='item-note';notes.dataset.item=item.id;notes.open=expanded.has(item.id);const summary=document.createElement('summary');summary.textContent='メモ';summary.setAttribute('aria-label',item.name+'のメモ');const p=document.createElement('p');p.textContent=item.note;notes.append(summary,p);detail.append(notes);}
+ row.append(check,detail);
+ }else{row.append(detail,controls);}
+ container.append(row);
  });
 }
 const ref=id=>api.doc(db,'lists',room,'items',id);
 function reset(){editing=null;form.reset();$('formTitle').textContent='買うものを追加';form.querySelector('[type=submit]').textContent='追加する';$('cancel').hidden=true;}
-function edit(item){editing=item.id;for(const key of ['name','quantity','category','location','note'])form.elements[key].value=key==='category'?categoryForItem(item):(item[key]||'');$('formTitle').textContent='品目を編集';form.querySelector('[type=submit]').textContent='変更を保存';$('cancel').hidden=false;renderLocations();form.elements.name.focus();}
+function edit(item){selectTab('edit');editing=item.id;for(const key of ['name','quantity','category','location','note'])form.elements[key].value=key==='category'?categoryForItem(item):(item[key]||'');$('formTitle').textContent='品目を編集';form.querySelector('[type=submit]').textContent='変更を保存';$('cancel').hidden=false;renderLocations();form.elements.name.focus();}
 $('cancel').onclick=reset;
 for(const id of ['filter','categoryFilter','locationFilter'])if($(id))$(id).onchange=render;
 if($('clearFilters'))$('clearFilters').onclick=()=>{for(const id of ['filter','categoryFilter','locationFilter'])if($(id))$(id).value='all';render();};
