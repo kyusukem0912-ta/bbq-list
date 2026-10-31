@@ -1,9 +1,15 @@
 import {firebaseConfig} from './firebase-config.js';
 const $ = id => document.getElementById(id);
 let items=[], room='', db, api, auth, editing=null, stop;
+const shoppingCategories = ["お肉・魚","野菜・締め","ソフトドリンク","アルコール","追加する調味料・保冷用品"];
+const legacyCategoryByName = {"牛タン":"お肉・魚","牛ハラミ":"お肉・魚","牛ホルモン":"お肉・魚","骨付き肉":"お肉・魚","豚トロ":"お肉・魚","秋刀魚":"お肉・魚","長ネギ":"野菜・締め","肉厚椎茸":"野菜・締め","肉厚椎茸の傘焼き":"野菜・締め","玉ねぎ":"野菜・締め","ピーマン":"野菜・締め","キャベツ":"野菜・締め","もやし":"野菜・締め","焼きそば麺":"野菜・締め","豚こま・豚バラ":"野菜・締め","焼きそばソース":"野菜・締め","コカ・コーラ":"ソフトドリンク","オレンジジュース":"ソフトドリンク","烏龍茶 or 麦茶":"ソフトドリンク","水":"ソフトドリンク","ビール":"アルコール","レモンサワー":"アルコール","ハイボール":"アルコール","その他チューハイ":"アルコール","赤ワイン":"アルコール","赤ワイン・フルボディ":"アルコール","焼肉のたれ":"追加する調味料・保冷用品","レモン果汁":"追加する調味料・保冷用品","氷":"追加する調味料・保冷用品","保冷バッグ・保冷剤":"追加する調味料・保冷用品"};
+function categoryForItem(item){
+ if(shoppingCategories.includes(item.category))return item.category;
+ return legacyCategoryByName[item.name]||'その他';
+}
 const form=$('itemForm');
 const notice=message=>{$('notice').textContent=message;};
-function failure(error){console.error(error.code||'operation-failed');notice('保存・接続に失敗しました。通信と設定を確認して再試行してください。'+(error.code ? ` (${error.code})`:''));}
+function failure(error){console.error(error.code||'operation-failed');if(error.code==='permission-denied'){notice('保存が許可されませんでした。管理者はFirestoreのルールを最新版へ更新してください。入力内容は残っています。');return;}notice('保存・接続に失敗しました。通信と設定を確認して再試行してください。'+(error.code ? ` (${error.code})`:''));}
 function renderLocations(){
  const picker=$('locationPicker');if(!picker)return;
  const locations=[...new Set(items.map(item=>(item.location||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ja'));
@@ -31,7 +37,7 @@ function renderLocationFilter(){
 function matchesFilters(item,status,category,location){
  const place=(item.location||'').trim();
  return (status==='all'||item.done===(status==='done'))
-  && (category==='all'||item.category===category)
+  && (category==='all'||categoryForItem(item)===category)
   && (location==='all'||(location==='unset'?!place:place===location.slice(6)));
 }
 
@@ -46,13 +52,13 @@ function render(){
  shown.sort((a,b)=>Number(a.done)-Number(b.done)||a.name.localeCompare(b.name,'ja')).forEach(item=>{
  const row=document.createElement('article');row.className='item'+(item.done?' done':'');
  const check=document.createElement('input');check.type='checkbox';check.checked=item.done;check.setAttribute('aria-label',`${item.name}を購入済みにする`);check.onchange=async()=>{check.disabled=true;try{await api.updateDoc(ref(item.id),{done:check.checked,updatedBy:'',updatedAt:api.serverTimestamp()});}catch(e){check.checked=item.done;failure(e);}finally{check.disabled=false;}};
- const detail=document.createElement('div');detail.className='detail';const title=document.createElement('strong');title.textContent=item.name;const meta=document.createElement('p');meta.textContent=[item.category,item.quantity,item.location?`買い出し場所：${item.location}`:'場所未定',item.note].filter(Boolean).join(' · ');detail.append(title,meta);
+ const detail=document.createElement('div');detail.className='detail';const title=document.createElement('strong');title.textContent=item.name;const meta=document.createElement('p');meta.textContent=[categoryForItem(item),item.quantity,item.location?`買い出し場所：${item.location}`:'場所未定',item.note].filter(Boolean).join(' · ');detail.append(title,meta);
  const controls=document.createElement('div');controls.className='controls';for(const [label,action] of [['編集',()=>edit(item)],['削除',async()=>{if(!confirm(`「${item.name}」を削除しますか？`))return;try{await api.deleteDoc(ref(item.id));if(editing===item.id)reset();}catch(e){failure(e);}}]]){const b=document.createElement('button');b.textContent=label;b.setAttribute('aria-label',`${item.name}を${label}`);b.onclick=action;controls.append(b);}row.append(check,detail,controls);$('items').append(row);
  });
 }
 const ref=id=>api.doc(db,'lists',room,'items',id);
 function reset(){editing=null;form.reset();$('formTitle').textContent='買うものを追加';form.querySelector('[type=submit]').textContent='追加する';$('cancel').hidden=true;}
-function edit(item){editing=item.id;for(const key of ['name','quantity','category','location','note'])form.elements[key].value=item[key]||'';$('formTitle').textContent='品目を編集';form.querySelector('[type=submit]').textContent='変更を保存';$('cancel').hidden=false;renderLocations();form.elements.name.focus();}
+function edit(item){editing=item.id;for(const key of ['name','quantity','category','location','note'])form.elements[key].value=key==='category'?categoryForItem(item):(item[key]||'');$('formTitle').textContent='品目を編集';form.querySelector('[type=submit]').textContent='変更を保存';$('cancel').hidden=false;renderLocations();form.elements.name.focus();}
 $('cancel').onclick=reset;
 for(const id of ['filter','categoryFilter','locationFilter'])if($(id))$(id).onchange=render;
 if($('clearFilters'))$('clearFilters').onclick=()=>{for(const id of ['filter','categoryFilter','locationFilter'])if($(id))$(id).value='all';render();};
