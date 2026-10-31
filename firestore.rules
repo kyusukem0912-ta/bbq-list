@@ -18,7 +18,7 @@ service cloud.firestore {
       && d.keys().hasOnly(['name','quantity','category','assignee','location','note','done','createdAt','updatedAt','updatedBy'])
       && d.name is string && d.name.size() > 0 && d.name.size() <= 100
       && d.quantity is string && d.quantity.size() <= 40
-      && d.category in ['食材','飲み物','道具','その他']
+      && d.category in ["食材","飲み物","道具","その他","お肉・魚","野菜・締め","ソフトドリンク","アルコール","追加する調味料・保冷用品"]
       && (!('location' in d) || (d.location is string && d.location.size() <= 100))
       && d.assignee is string && d.assignee.size() <= 40
       && d.note is string && d.note.size() <= 300
